@@ -1,4 +1,19 @@
-use jiff::civil::DateTime;
+use jiff::{Timestamp, civil::DateTime};
+
+#[derive(Debug)]
+pub struct TaskList {
+    pub id: String,
+    pub link: String,
+    pub title: String,
+}
+
+#[derive(Debug)]
+pub struct Task {
+    pub id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub due: Timestamp,
+}
 
 #[derive(Debug, Clone)]
 pub struct Login {

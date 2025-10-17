@@ -14,6 +14,45 @@ pub enum FawnError {
     Date(#[from] jiff::Error),
     #[error("google login")]
     Google,
+    #[error("system timezone")]
+    SysTz,
+}
+
+impl GoogleTasklists {
+    pub fn format(&self) -> Vec<TaskList> {
+        return self
+            .items
+            .iter()
+            .map(|item| TaskList {
+                id: item.id.clone(),
+                link: item.self_link.clone(),
+                title: item.title.clone(),
+            })
+            .collect();
+    }
+}
+
+impl TaskList {
+    pub fn tasks(&self, login: &Login) -> Result<Vec<Task>, FawnError> {
+        // TODO: add options for filtering
+        Ok(ureq::get(format!(
+            "https://tasks.googleapis.com/tasks/v1/lists/{}/tasks",
+            &self.id
+        ))
+        .header("Authorization", format!("Bearer {}", login.access_token))
+        .call()?
+        .body_mut()
+        .read_json::<GoogleTaskslist>()?
+        .items
+        .into_iter()
+        .map(|t| Task {
+            id: t.id,
+            title: t.title,
+            description: t.notes,
+            due: t.due.parse().unwrap_or_default(),
+        })
+        .collect())
+    }
 }
 
 impl GoogleLogin {
@@ -84,5 +123,24 @@ impl Login {
         self.id_token = login.id_token;
         self.token_type = login.token_type;
         return Ok(());
+    }
+
+    pub fn tasklist(&self) -> Result<Vec<TaskList>, FawnError> {
+        Ok(
+            ureq::get("https://tasks.googleapis.com/tasks/v1/users/@me/lists")
+                .header("Authorization", format!("Bearer {}", self.access_token))
+                .call()?
+                .body_mut()
+                .read_json::<GoogleTasklists>()?
+                .format(),
+        )
+    }
+
+    pub fn all_tasks(&self) -> Result<Vec<Task>, FawnError> {
+        Ok(self
+            .tasklist()?
+            .iter()
+            .flat_map(|list| list.tasks(&self).unwrap_or(vec![]))
+            .collect::<Vec<Task>>())
     }
 }

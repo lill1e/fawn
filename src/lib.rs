@@ -49,6 +49,7 @@ impl Login {
             .read_json::<GoogleLogin>()?
             .wrap(client_id.to_string(), client_secret.to_string())?);
     }
+
     pub fn from_refresh_token(
         refresh_token: &str,
         client_id: &str,
@@ -66,6 +67,7 @@ impl Login {
         login.refresh()?;
         Ok(login)
     }
+
     pub fn refresh(&mut self) -> Result<(), FawnError> {
         let login = ureq::post("https://oauth2.googleapis.com/token")
             .send_form([

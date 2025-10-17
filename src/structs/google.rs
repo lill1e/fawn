@@ -30,6 +30,47 @@ pub struct GoogleTasks {
     pub due: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GoogleCalendarlists {
+    pub items: Vec<GoogleCalendarlist>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GoogleCalendarlist {
+    pub id: String,
+    pub summary: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CalendarList {
+    pub id: String,
+    pub title: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GoogleCalendarEvents {
+    pub items: Vec<GoogleCalendarEvent>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GoogleCalendarEvent {
+    pub location: String,
+    pub summary: String,
+    pub start: GoogleCalendarEventDateTime,
+    pub end: GoogleCalendarEventDateTime,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GoogleCalendarEventDateTime {
+    pub date_time: String,
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct GoogleLogin {
     pub access_token: String,

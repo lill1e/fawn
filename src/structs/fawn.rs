@@ -15,6 +15,14 @@ pub struct Task {
     pub due: Timestamp,
 }
 
+#[derive(Debug)]
+pub struct Event {
+    pub location: String,
+    pub title: String,
+    pub start: Timestamp,
+    pub end: Timestamp,
+}
+
 #[derive(Debug, Clone)]
 pub struct Login {
     pub client_id: String,

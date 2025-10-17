@@ -1,8 +1,9 @@
 mod structs;
 
-use jiff::{ToSpan, Zoned};
+use jiff::{ToSpan, Zoned, tz::TimeZone};
 pub use structs::{fawn::*, google::*};
 use thiserror::Error;
+use url::Url;
 
 #[derive(Error, Debug)]
 pub enum FawnError {
@@ -10,12 +11,20 @@ pub enum FawnError {
     Request(#[from] ureq::Error),
     #[error("json")]
     JSON(#[from] serde_json::Error),
+    #[error("url")]
+    URLBuilder(#[from] url::ParseError),
     #[error("date")]
     Date(#[from] jiff::Error),
     #[error("google login")]
     Google,
     #[error("system timezone")]
     SysTz,
+}
+
+impl From<()> for FawnError {
+    fn from(_: ()) -> Self {
+        FawnError::URLBuilder(url::ParseError::InvalidDomainCharacter)
+    }
 }
 
 impl GoogleTasklists {
@@ -27,6 +36,34 @@ impl GoogleTasklists {
                 id: item.id.clone(),
                 link: item.self_link.clone(),
                 title: item.title.clone(),
+            })
+            .collect();
+    }
+}
+
+impl GoogleCalendarlists {
+    pub fn format(&self) -> Vec<CalendarList> {
+        return self
+            .items
+            .iter()
+            .map(|item| CalendarList {
+                id: item.id.clone(),
+                title: item.summary.clone(),
+            })
+            .collect();
+    }
+}
+
+impl GoogleCalendarEvents {
+    pub fn format(&self) -> Vec<Event> {
+        return self
+            .items
+            .iter()
+            .map(|item| Event {
+                location: item.location.clone(),
+                title: item.summary.clone(),
+                start: item.start.date_time.parse().unwrap_or_default(),
+                end: item.end.date_time.parse().unwrap_or_default(),
             })
             .collect();
     }
@@ -52,6 +89,36 @@ impl TaskList {
             due: t.due.parse().unwrap_or_default(),
         })
         .collect())
+    }
+}
+
+impl CalendarList {
+    pub fn events(&self, login: &Login) -> Result<GoogleCalendarEvents, FawnError> {
+        let mut url = Url::parse("https://www.googleapis.com/calendar/v3/calendars")?;
+        url.path_segments_mut()?.extend(&[&self.id, "events"]);
+        let today = Zoned::now();
+        return Ok(ureq::get(url.to_string())
+            .query("singleEvents", "true")
+            .query("orderBy", "startTime")
+            .query("timeMin", today.timestamp().to_string())
+            .query(
+                "timeMax",
+                today
+                    .tomorrow()
+                    .unwrap_or_default()
+                    .start_of_day()
+                    .unwrap_or_default()
+                    .timestamp()
+                    .to_string(),
+            )
+            .query(
+                "timeZone",
+                TimeZone::system().iana_name().ok_or(FawnError::SysTz)?,
+            )
+            .header("Authorization", format!("Bearer {}", login.access_token))
+            .call()?
+            .body_mut()
+            .read_json::<GoogleCalendarEvents>()?);
     }
 }
 
@@ -142,5 +209,27 @@ impl Login {
             .iter()
             .flat_map(|list| list.tasks(&self).unwrap_or(vec![]))
             .collect::<Vec<Task>>())
+    }
+    pub fn calendarlist(&self) -> Result<Vec<CalendarList>, FawnError> {
+        Ok(
+            ureq::get("https://www.googleapis.com/calendar/v3/users/me/calendarList")
+                .header("Authorization", format!("Bearer {}", self.access_token))
+                .call()?
+                .body_mut()
+                .read_json::<GoogleCalendarlists>()?
+                .format(),
+        )
+    }
+
+    pub fn all_events(&self) -> Result<Vec<Event>, FawnError> {
+        Ok(self
+            .calendarlist()?
+            .iter()
+            .flat_map(|l| {
+                l.events(&self)
+                    .unwrap_or(GoogleCalendarEvents { items: Vec::new() })
+                    .format()
+            })
+            .collect::<Vec<_>>())
     }
 }

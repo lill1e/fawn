@@ -125,7 +125,6 @@ impl CalendarList {
 impl GoogleLogin {
     fn wrap(&self, client_id: String, client_secret: String) -> Result<Login, FawnError> {
         let cl = self.clone();
-        dbg!(&cl);
         match cl.refresh_token {
             Some(r_token) => Ok(Login {
                 client_id: client_id,

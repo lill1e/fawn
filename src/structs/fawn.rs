@@ -17,7 +17,7 @@ pub struct Task {
 
 #[derive(Debug)]
 pub struct Event {
-    pub location: String,
+    pub location: Option<String>,
     pub title: String,
     pub start: Timestamp,
     pub end: Timestamp,

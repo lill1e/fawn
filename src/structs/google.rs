@@ -59,7 +59,7 @@ pub struct GoogleCalendarEvents {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GoogleCalendarEvent {
-    pub location: String,
+    pub location: Option<String>,
     pub summary: String,
     pub start: GoogleCalendarEventDateTime,
     pub end: GoogleCalendarEventDateTime,
